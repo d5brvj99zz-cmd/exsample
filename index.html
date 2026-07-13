@@ -29,16 +29,62 @@
       background-color: var(--bg-color);
       color: var(--text-color);
       padding: 16px;
-      padding-bottom: 80px; /* モーダルやボタン用の余白 */
+      padding-bottom: 80px;
+    }
+
+    /* ヘッダーエリアのレイアウト */
+    .header-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
     }
 
     h1 {
       font-size: 24px;
-      margin-bottom: 20px;
       font-weight: bold;
     }
 
-    /* ダッシュボードのグリッド配置（スマホは1列、PCなど広い画面では複数列） */
+    /* JSON保存・読込ボタンのスタイル（今時のミニマルなデザイン） */
+    .json-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-json {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 8px 12px;
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      color: #555;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      transition: all 0.2s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .btn-json:active {
+      background-color: #f0f2f5;
+      transform: scale(0.97);
+    }
+
+    .btn-json svg {
+      width: 16px;
+      height: 16px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    /* ダッシュボードのグリッド配置 */
     .dashboard-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -57,7 +103,6 @@
       border: 1px solid rgba(0,0,0,0.03);
     }
 
-    /* 並び替え時の掴み手（ハンドル） */
     .card-header {
       display: flex;
       justify-content: space-between;
@@ -108,7 +153,7 @@
       height: 200px;
     }
 
-    /* グラフ追加ボタン（画像のような点線枠のダッシュボードスタイル） */
+    /* グラフ追加ボタン */
     .add-card-btn {
       background: transparent;
       border: 2px dashed #b0c4de;
@@ -128,7 +173,7 @@
       background: rgba(74, 144, 226, 0.05);
     }
 
-    /* モーダル（入力フォーム）のスタイル */
+    /* モーダル */
     .modal {
       display: none;
       position: fixed;
@@ -136,7 +181,7 @@
       background: rgba(0,0,0,0.5);
       z-index: 1000;
       justify-content: center;
-      align-items: flex-end; /* スマホで操作しやすいよう下部からポップアップ */
+      align-items: flex-end;
     }
     @media (min-width: 600px) {
       .modal { align-items: center; }
@@ -211,29 +256,47 @@
     .btn-primary { background: var(--primary-color); color: white; }
     .btn-danger { background: #fdf2f2; color: var(--danger-color); border: 1px solid #f5c6cb; margin-top: 16px;}
 
-    /* SortableJS用のプレースホルダー（移動中の影） */
     .sortable-placeholder {
       background-color: rgba(0, 0, 0, 0.02);
       border: 2px dashed #ccc;
       border-radius: 12px;
     }
+
+    /* ファイルインプットを隠す */
+    #jsonFileInput {
+      display: none;
+    }
   </style>
 </head>
 <body>
 
-  <h1>ダッシュボード</h1>
+  <!-- ヘッダー部分 -->
+  <div class="header-container">
+    <h1>ダッシュボード</h1>
+    <div class="json-actions">
+      <!-- 読み込みボタン -->
+      <button class="btn-json" id="importBtn" title="JSONデータを読み込む">
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v4M7 10l5 5 5-5M12 15V3"/></svg>
+        読込
+      </button>
+      <!-- 保存ボタン -->
+      <button class="btn-json" id="exportBtn" title="JSONデータとして保存">
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+        保存
+      </button>
+      <!-- 非表示のファイル選択要素 -->
+      <input type="file" id="jsonFileInput" accept=".json">
+    </div>
+  </div>
 
   <div class="dashboard-grid" id="dashboardGrid">
-    <!-- グラフカードがJavaScriptでここに動的追加されます -->
-    
-    <!-- 追加用ボタン（末尾に配置） -->
-    <button class="add-card-btn" id="openAddModalBtn" data-inline="true">
+    <button class="add-card-btn" id="openAddModalBtn">
       <span style="font-size: 24px; margin-bottom: 8px;">＋</span>
       グラフを追加
     </button>
   </div>
 
-  <!-- グラフ編集・追加共通モーダル -->
+  <!-- モーダル（入力フォーム） -->
   <div class="modal" id="chartModal">
     <div class="modal-content">
       <div class="modal-header">
@@ -279,9 +342,7 @@
           <span>データ項目 (ラベル と 値)</span>
           <button type="button" id="add增RowBtn" style="background: #eef2f7; border:1px solid #ccc; padding:2px 8px; border-radius:4px; font-size:11px; color:#333;">+ 行を追加</button>
         </label>
-        <div id="dataRowsContainer">
-          <!-- データ行がここに追加される -->
-        </div>
+        <div id="dataRowsContainer"></div>
       </div>
 
       <button type="button" class="btn-block btn-primary" id="saveChartBtn">保存する</button>
@@ -290,7 +351,7 @@
   </div>
 
   <script>
-    // 初期サンプルデータ (localStorageが空の場合に使用)
+    // サンプルデータ
     const defaultCharts = [
       { id: "1", title: "ドル円", type: "line", color: "#2ecc71", yMin: 130, yMax: 160, data: [{l:"1",v:150},{l:"2",v:152},{l:"3",v:149},{l:"4",v:153}] },
       { id: "2", title: "iDeCo", type: "line", color: "#f1c40f", yMin: 0, yMax: 200, data: [{l:"1",v:100},{l:"2",v:110},{l:"3",v:105},{l:"4",v:130}] },
@@ -298,38 +359,78 @@
     ];
 
     let chartsData = JSON.parse(localStorage.getItem('dashboard_charts')) || defaultCharts;
-    let chartInstances = {}; // 各Chart.jsインスタンスを保持するオブジェクト
+    let chartInstances = {};
 
     const grid = document.getElementById('dashboardGrid');
     const modal = document.getElementById('chartModal');
     const dataRowsContainer = document.getElementById('dataRowsContainer');
 
-    // 初期化処理
     window.addEventListener('DOMContentLoaded', () => {
       renderDashboard();
       initSortable();
       
-      // イベントリスナー登録
       document.getElementById('openAddModalBtn').addEventListener('click', () => openModal());
       document.getElementById('closeModalBtn').addEventListener('click', closeModal);
       document.getElementById('add增RowBtn').addEventListener('click', () => addDataRow('', ''));
       document.getElementById('saveChartBtn').addEventListener('click', saveChart);
       document.getElementById('deleteChartBtn').addEventListener('click', deleteChart);
+      
       document.getElementById('chartType').addEventListener('change', (e) => {
-        // 円グラフの時は上下限値の入力欄を隠す
         document.getElementById('limitFields').style.display = e.target.value === 'pie' ? 'none' : 'block';
       });
+
+      // JSON機能のイベントリスナー
+      document.getElementById('exportBtn').addEventListener('click', exportToJson);
+      document.getElementById('importBtn').addEventListener('click', () => document.getElementById('jsonFileInput').click());
+      document.getElementById('jsonFileInput').addEventListener('change', importFromJson);
     });
 
-    // 指操作（ドラッグ＆ドロップ）の初期化
+    // JSON保存（エクスポート）
+    function exportToJson() {
+      const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(chartsData, null, 2))}`;
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", jsonString);
+      downloadAnchor.setAttribute("download", `dashboard_data_${new Date().toISOString().slice(0,10)}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    }
+
+    // JSON読み込み（インポート）
+    function importFromJson(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        try {
+          const parsedData = JSON.parse(event.target.result);
+          
+          // 簡単な形式チェック
+          if (Array.isArray(parsedData)) {
+            chartsData = parsedData;
+            saveToLocalStorage();
+            renderDashboard();
+            alert('データを正常に読み込みました！');
+          } else {
+            alert('JSONのデータ形式が正しくありません。');
+          }
+        } catch (error) {
+          alert('ファイルの読み込みに失敗しました。有効なJSONファイルか確認してください。');
+        }
+        // 連続で同じファイルを読み込めるようにリセット
+        e.target.value = '';
+      };
+      reader.readAsText(file);
+    }
+
     function initSortable() {
       Sortable.create(grid, {
-        handle: '.drag-handle', // 掴み手部分のみドラッグ可能にする
+        handle: '.drag-handle',
         animation: 150,
         placeholder: 'sortable-placeholder',
-        filter: '#openAddModalBtn', // 追加ボタンは動かさない
+        filter: '#openAddModalBtn',
         onEnd: function () {
-          // 並び替え後の順番を検知してデータを入れ替え、保存
           const currentIds = Array.from(grid.querySelectorAll('.card')).map(card => card.dataset.id);
           const reordered = [];
           currentIds.forEach(id => {
@@ -342,19 +443,15 @@
       });
     }
 
-    // ダッシュボード全体の描画
     function renderDashboard() {
-      // 既存のカードを削除（追加ボタン以外）
       const cards = grid.querySelectorAll('.card');
       cards.forEach(card => card.remove());
 
-      // グラフインスタンスのクリーンアップ
       Object.keys(chartInstances).forEach(id => {
         chartInstances[id].destroy();
       });
       chartInstances = {};
 
-      // データを元にカードを生成（追加ボタンの手前に挿入）
       const addBtn = document.getElementById('openAddModalBtn');
       chartsData.forEach(chart => {
         const cardHtml = `
@@ -376,7 +473,6 @@
       });
     }
 
-    // 個々のChart.jsを描画
     function buildChart(chart) {
       const ctx = document.getElementById(`canvas-${chart.id}`).getContext('2d');
       const labels = chart.data.map(d => d.l);
@@ -394,7 +490,7 @@
               : rgbaColor(chart.color, 0.1),
             borderColor: chart.color,
             borderWidth: 2,
-            tension: 0.3, // 折れ線の少し滑らかなカーブ
+            tension: 0.3,
             fill: chart.type === 'line'
           }]
         },
@@ -407,11 +503,8 @@
         }
       };
 
-      // 折れ線グラフかつ上限・下限が設定されている場合の設定
       if (chart.type === 'line') {
-        config.options.scales = {
-          y: {}
-        };
+        config.options.scales = { y: {} };
         if (chart.yMin !== undefined && chart.yMin !== '') config.options.scales.y.min = Number(chart.yMin);
         if (chart.yMax !== undefined && chart.yMax !== '') config.options.scales.y.max = Number(chart.yMax);
       }
@@ -419,13 +512,11 @@
       chartInstances[chart.id] = new Chart(ctx, config);
     }
 
-    // モーダルを開く（新規 or 編集）
     function openModal(id = null) {
       modal.style.display = 'flex';
       dataRowsContainer.innerHTML = '';
 
       if (id) {
-        // 編集モード
         const chart = chartsData.find(c => c.id === id);
         document.getElementById('modalTitle').textContent = 'グラフの編集';
         document.getElementById('editChartId').value = chart.id;
@@ -435,12 +526,9 @@
         document.getElementById('yMin').value = chart.yMin || '';
         document.getElementById('yMax').value = chart.yMax || '';
         document.getElementById('deleteChartBtn').style.display = 'block';
-
         document.getElementById('limitFields').style.display = chart.type === 'pie' ? 'none' : 'block';
-
         chart.data.forEach(d => addDataRow(d.l, d.v));
       } else {
-        // 新規追加モード
         document.getElementById('modalTitle').textContent = 'グラフの追加';
         document.getElementById('editChartId').value = '';
         document.getElementById('chartTitle').value = '';
@@ -450,18 +538,13 @@
         document.getElementById('yMax').value = '';
         document.getElementById('deleteChartBtn').style.display = 'none';
         document.getElementById('limitFields').style.display = 'block';
-
-        // 初期データ行を2つほど出しておく
         addDataRow('1', '');
         addDataRow('2', '');
       }
     }
 
-    function closeModal() {
-      modal.style.display = 'none';
-    }
+    function closeModal() { modal.style.display = 'none'; }
 
-    // データ入力用の行を追加する
     function addDataRow(label = '', value = '') {
       const row = document.createElement('div');
       row.className = 'data-row';
@@ -473,7 +556,6 @@
       dataRowsContainer.appendChild(row);
     }
 
-    // グラフの保存（新規登録 ＆ 更新処理）
     function saveChart() {
       const id = document.getElementById('editChartId').value;
       const title = document.getElementById('chartTitle').value || '無題のグラフ';
@@ -482,7 +564,6 @@
       const yMin = document.getElementById('yMin').value;
       const yMax = document.getElementById('yMax').value;
 
-      // 行からデータを収集
       const rows = dataRowsContainer.querySelectorAll('.data-row');
       const data = [];
       rows.forEach(row => {
@@ -492,11 +573,9 @@
       });
 
       if (id) {
-        // 既存データの更新
         const index = chartsData.findIndex(c => c.id === id);
         chartsData[index] = { id, title, type, color, yMin, yMax, data };
       } else {
-        // 新規作成
         const newId = String(Date.now());
         chartsData.push({ id: newId, title, type, color, yMin, yMax, data });
       }
@@ -506,7 +585,6 @@
       closeModal();
     }
 
-    // グラフの削除
     function deleteChart() {
       const id = document.getElementById('editChartId').value;
       if (id && confirm('このグラフを削除してもよろしいですか？')) {
@@ -521,7 +599,6 @@
       localStorage.setItem('dashboard_charts', JSON.stringify(chartsData));
     }
 
-    // 補助関数: カラーコードを透過rgbaにする
     function rgbaColor(hex, alpha) {
       const r = parseInt(hex.slice(1, 3), 16);
       const g = parseInt(hex.slice(3, 5), 16);
@@ -529,7 +606,6 @@
       return `rgba(${r}, ${g}, ${b}, ${alpha})`;
     }
 
-    // 補助関数: 円グラフ用にテーマカラーを基調としたグラデーション色を生成
     function generatePieColors(baseHex, count) {
       const colors = [];
       for (let i = 0; i < count; i++) {
