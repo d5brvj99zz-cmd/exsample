@@ -508,13 +508,26 @@
     }
 
     function exportToJson() {
-      const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(chartsData, null, 2))}`;
+      // 1. 保存するデータをJSON形式の文字列（きれいな改行付き）にする
+      const jsonString = JSON.stringify(chartsData, null, 2);
+      
+      // 2. スマホでもファイルとして認識されるように Blob を作成する（MIMEタイプを application/json に指定）
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      
+      // 3. Blobから一時的なダウンロード用のURLを発行する
+      const url = URL.createObjectURL(blob);
+      
+      // 4. 疑似的なリンク（aタグ）を作って自動でクリックさせる
       const downloadAnchor = document.createElement('a');
-      downloadAnchor.setAttribute("href", jsonString);
+      downloadAnchor.setAttribute("href", url);
       downloadAnchor.setAttribute("download", `dashboard_data_${new Date().toISOString().slice(0,10)}.json`);
+      
       document.body.appendChild(downloadAnchor);
       downloadAnchor.click();
-      downloadAnchor.remove();
+      
+      // 5. 後片付け（メモリ解放と要素の削除）
+      document.body.removeChild(downloadAnchor);
+      URL.revokeObjectURL(url);
     }
 
     function importFromJson(e) {
