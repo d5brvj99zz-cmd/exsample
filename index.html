@@ -1,133 +1,543 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>レシート文字起こしカメラ</title>
-    <style>
-        body {
-            font-family: 'Helvetica Neue', Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: #f5f5f7;
-            color: #333;
-            text-align: center;
-        }
-        h1 {
-            font-size: 24px;
-            margin-bottom: 20px;
-        }
-        .upload-btn {
-            display: inline-block;
-            padding: 15px 30px;
-            font-size: 18px;
-            font-weight: bold;
-            color: #fff;
-            background-color: #007aff;
-            border-radius: 10px;
-            cursor: pointer;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            transition: background 0.2s;
-        }
-        .upload-btn:active {
-            background-color: #0056b3;
-        }
-        input[type="file"] {
-            display: none;
-        }
-        #preview {
-            max-width: 100%;
-            max-height: 300px;
-            margin-top: 20px;
-            border-radius: 8px;
-            display: none;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        #status {
-            margin-top: 20px;
-            font-weight: bold;
-            color: #555;
-        }
-        #result {
-            margin-top: 20px;
-            padding: 15px;
-            background: #fff;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            text-align: left;
-            white-space: pre-wrap;
-            word-break: break-all;
-            min-height: 100px;
-            box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
-        }
-    </style>
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ダッシュボード</title>
+  <!-- Chart.js (グラフ描画用) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Sortable.js (スマホの指操作・ドラッグ＆ドロップ並び替え用) -->
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  <style>
+    :root {
+      --bg-color: #f4f6f9;
+      --card-bg: #ffffff;
+      --text-color: #333333;
+      --border-color: #e0e0e0;
+      --primary-color: #4a90e2;
+      --danger-color: #e74c3c;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      padding: 16px;
+      padding-bottom: 80px; /* モーダルやボタン用の余白 */
+    }
+
+    h1 {
+      font-size: 24px;
+      margin-bottom: 20px;
+      font-weight: bold;
+    }
+
+    /* ダッシュボードのグリッド配置（スマホは1列、PCなど広い画面では複数列） */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    /* グラフカード */
+    .card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      padding: 16px;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid rgba(0,0,0,0.03);
+    }
+
+    /* 並び替え時の掴み手（ハンドル） */
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .card-title {
+      font-size: 16px;
+      font-weight: bold;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 70%;
+    }
+
+    .card-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-edit {
+      background: none;
+      border: none;
+      color: #888;
+      cursor: pointer;
+      font-size: 14px;
+      padding: 4px;
+    }
+
+    .drag-handle {
+      cursor: move;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #eee;
+      border-radius: 4px;
+      color: #666;
+      font-size: 12px;
+    }
+
+    .chart-container {
+      position: relative;
+      width: 100%;
+      height: 200px;
+    }
+
+    /* グラフ追加ボタン（画像のような点線枠のダッシュボードスタイル） */
+    .add-card-btn {
+      background: transparent;
+      border: 2px dashed #b0c4de;
+      border-radius: 12px;
+      min-height: 250px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary-color);
+      font-weight: bold;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .add-card-btn:active {
+      background: rgba(74, 144, 226, 0.05);
+    }
+
+    /* モーダル（入力フォーム）のスタイル */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      justify-content: center;
+      align-items: flex-end; /* スマホで操作しやすいよう下部からポップアップ */
+    }
+    @media (min-width: 600px) {
+      .modal { align-items: center; }
+    }
+
+    .modal-content {
+      background: var(--card-bg);
+      width: 100%;
+      max-width: 500px;
+      border-top-left-radius: 20px;
+      border-top-right-radius: 20px;
+      padding: 20px;
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+    @media (min-width: 600px) {
+      .modal-content { border-radius: 16px; }
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .modal-title { font-weight: bold; font-size: 18px; }
+    .modal-close { font-size: 24px; cursor: pointer; background: none; border: none; color: #999; }
+
+    .form-group {
+      margin-bottom: 12px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 12px;
+      font-weight: bold;
+      margin-bottom: 4px;
+      color: #666;
+    }
+    .form-control {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      font-size: 14px;
+    }
+
+    .data-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+      align-items: center;
+    }
+    .btn-remove-data {
+      background: var(--danger-color);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+
+    .btn-block {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 16px;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+    .btn-primary { background: var(--primary-color); color: white; }
+    .btn-danger { background: #fdf2f2; color: var(--danger-color); border: 1px solid #f5c6cb; margin-top: 16px;}
+
+    /* SortableJS用のプレースホルダー（移動中の影） */
+    .sortable-placeholder {
+      background-color: rgba(0, 0, 0, 0.02);
+      border: 2px dashed #ccc;
+      border-radius: 12px;
+    }
+  </style>
 </head>
 <body>
 
-    <h1>🧾 レシート文字起こし</h1>
+  <h1>ダッシュボード</h1>
+
+  <div class="dashboard-grid" id="dashboardGrid">
+    <!-- グラフカードがJavaScriptでここに動的追加されます -->
     
-    <label class="upload-btn">
-        📷 レシートを撮影 / 選択
-        <input type="file" id="image-input" accept="image/*" capture="environment">
-    </label>
+    <!-- 追加用ボタン（末尾に配置） -->
+    <button class="add-card-btn" id="openAddModalBtn" data-inline="true">
+      <span style="font-size: 24px; margin-bottom: 8px;">＋</span>
+      グラフを追加
+    </button>
+  </div>
 
-    <br>
-    <img id="preview" alt="プレビュー">
-    
-    <div id="status"></div>
-    
-    <h3>認識結果:</h3>
-    <div id="result">ここにテキストが表示されます</div>
+  <!-- グラフ編集・追加共通モーダル -->
+  <div class="modal" id="chartModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title" id="modalTitle">グラフの追加</div>
+        <button class="modal-close" id="closeModalBtn">&times;</button>
+      </div>
 
-    <script>
-        const imageInput = document.getElementById('image-input');
-        const preview = document.getElementById('preview');
-        const statusDiv = document.getElementById('status');
-        const resultDiv = document.getElementById('result');
+      <input type="hidden" id="editChartId">
 
-        imageInput.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
+      <div class="form-group">
+        <label>タイトル</label>
+        <input type="text" id="chartTitle" class="form-control" placeholder="例：ドル円, iDeCo">
+      </div>
 
-            // 1. 画像のプレビュー表示
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                preview.src = event.target.result;
-                preview.style.display = 'inline-block';
-                
-                // 2. OCR処理の開始
-                recognizeText(event.target.result);
-            };
-            reader.readAsDataURL(file);
-        });
+      <div class="form-group">
+        <label>グラフの種類</label>
+        <select id="chartType" class="form-control">
+          <option value="line">折れ線グラフ</option>
+          <option value="pie">円グラフ</option>
+        </select>
+      </div>
 
-        async function recognizeText(imageSrc) {
-            statusDiv.innerText = '文字を認識中...（数十秒かかる場合があります）';
-            resultDiv.innerText = '';
+      <div class="form-group">
+        <label>テーマカラー</label>
+        <input type="color" id="chartColor" class="form-control" value="#4a90e2" style="height: 40px; padding:2px;">
+      </div>
 
-            try {
-                // Tesseract.js で日本語（jpn）と英語（eng）をターゲットに指定
-                const result = await Tesseract.recognize(
-                    imageSrc,
-                    'jpn+eng',
-                    {
-                        logger: m => {
-                            if (m.status === 'recognizing text') {
-                                statusDiv.innerText = `文字を認識中: ${Math.round(m.progress * 100)}%`;
-                            }
-                        }
-                    }
-                );
+      <div class="form-group" id="limitFields">
+        <div style="display: flex; gap: 12px;">
+          <div style="flex: 1;">
+            <label>下限値 (任意)</label>
+            <input type="number" id="yMin" class="form-control" placeholder="自動設定">
+          </div>
+          <div style="flex: 1;">
+            <label>上限値 (任意)</label>
+            <input type="number" id="yMax" class="form-control" placeholder="自動設定">
+          </div>
+        </div>
+      </div>
 
-                statusDiv.innerText = '認識完了！';
-                resultDiv.innerText = result.data.text ? result.data.text : '文字が検出されませんでした。';
-            } catch (error) {
-                console.error(error);
-                statusDiv.innerText = 'エラーが発生しました。';
-                resultDiv.innerText = '読み込みに失敗しました。もう一度試してください。';
-            }
+      <div class="form-group">
+        <label style="display: flex; justify-content: space-between; align-items: center;">
+          <span>データ項目 (ラベル と 値)</span>
+          <button type="button" id="add增RowBtn" style="background: #eef2f7; border:1px solid #ccc; padding:2px 8px; border-radius:4px; font-size:11px; color:#333;">+ 行を追加</button>
+        </label>
+        <div id="dataRowsContainer">
+          <!-- データ行がここに追加される -->
+        </div>
+      </div>
+
+      <button type="button" class="btn-block btn-primary" id="saveChartBtn">保存する</button>
+      <button type="button" class="btn-block btn-danger" id="deleteChartBtn" style="display: none;">このグラフを削除する</button>
+    </div>
+  </div>
+
+  <script>
+    // 初期サンプルデータ (localStorageが空の場合に使用)
+    const defaultCharts = [
+      { id: "1", title: "ドル円", type: "line", color: "#2ecc71", yMin: 130, yMax: 160, data: [{l:"1",v:150},{l:"2",v:152},{l:"3",v:149},{l:"4",v:153}] },
+      { id: "2", title: "iDeCo", type: "line", color: "#f1c40f", yMin: 0, yMax: 200, data: [{l:"1",v:100},{l:"2",v:110},{l:"3",v:105},{l:"4",v:130}] },
+      { id: "3", title: "貯金の割合", type: "pie", color: "#4a90e2", data: [{l:"投資",v:60},{l:"現金",v:30},{l:"暗号資産",v:10}] }
+    ];
+
+    let chartsData = JSON.parse(localStorage.getItem('dashboard_charts')) || defaultCharts;
+    let chartInstances = {}; // 各Chart.jsインスタンスを保持するオブジェクト
+
+    const grid = document.getElementById('dashboardGrid');
+    const modal = document.getElementById('chartModal');
+    const dataRowsContainer = document.getElementById('dataRowsContainer');
+
+    // 初期化処理
+    window.addEventListener('DOMContentLoaded', () => {
+      renderDashboard();
+      initSortable();
+      
+      // イベントリスナー登録
+      document.getElementById('openAddModalBtn').addEventListener('click', () => openModal());
+      document.getElementById('closeModalBtn').addEventListener('click', closeModal);
+      document.getElementById('add增RowBtn').addEventListener('click', () => addDataRow('', ''));
+      document.getElementById('saveChartBtn').addEventListener('click', saveChart);
+      document.getElementById('deleteChartBtn').addEventListener('click', deleteChart);
+      document.getElementById('chartType').addEventListener('change', (e) => {
+        // 円グラフの時は上下限値の入力欄を隠す
+        document.getElementById('limitFields').style.display = e.target.value === 'pie' ? 'none' : 'block';
+      });
+    });
+
+    // 指操作（ドラッグ＆ドロップ）の初期化
+    function initSortable() {
+      Sortable.create(grid, {
+        handle: '.drag-handle', // 掴み手部分のみドラッグ可能にする
+        animation: 150,
+        placeholder: 'sortable-placeholder',
+        filter: '#openAddModalBtn', // 追加ボタンは動かさない
+        onEnd: function () {
+          // 並び替え後の順番を検知してデータを入れ替え、保存
+          const currentIds = Array.from(grid.querySelectorAll('.card')).map(card => card.dataset.id);
+          const reordered = [];
+          currentIds.forEach(id => {
+            const item = chartsData.find(c => c.id === id);
+            if(item) reordered.push(item);
+          });
+          chartsData = reordered;
+          saveToLocalStorage();
         }
-    </script>
+      });
+    }
+
+    // ダッシュボード全体の描画
+    function renderDashboard() {
+      // 既存のカードを削除（追加ボタン以外）
+      const cards = grid.querySelectorAll('.card');
+      cards.forEach(card => card.remove());
+
+      // グラフインスタンスのクリーンアップ
+      Object.keys(chartInstances).forEach(id => {
+        chartInstances[id].destroy();
+      });
+      chartInstances = {};
+
+      // データを元にカードを生成（追加ボタンの手前に挿入）
+      const addBtn = document.getElementById('openAddModalBtn');
+      chartsData.forEach(chart => {
+        const cardHtml = `
+          <div class="card" data-id="${chart.id}">
+            <div class="card-header">
+              <div class="card-title">${chart.title}</div>
+              <div class="card-actions">
+                <button class="btn-edit" onclick="openModal('${chart.id}')">⚙️</button>
+                <div class="drag-handle">⋮⋮</div>
+              </div>
+            </div>
+            <div class="chart-container">
+              <canvas id="canvas-${chart.id}"></canvas>
+            </div>
+          </div>
+        `;
+        addBtn.insertAdjacentHTML('beforebegin', cardHtml);
+        buildChart(chart);
+      });
+    }
+
+    // 個々のChart.jsを描画
+    function buildChart(chart) {
+      const ctx = document.getElementById(`canvas-${chart.id}`).getContext('2d');
+      const labels = chart.data.map(d => d.l);
+      const values = chart.data.map(d => d.v);
+
+      const config = {
+        type: chart.type,
+        data: {
+          labels: labels,
+          datasets: [{
+            label: chart.title,
+            data: values,
+            backgroundColor: chart.type === 'pie' 
+              ? generatePieColors(chart.color, values.length) 
+              : rgbaColor(chart.color, 0.1),
+            borderColor: chart.color,
+            borderWidth: 2,
+            tension: 0.3, // 折れ線の少し滑らかなカーブ
+            fill: chart.type === 'line'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: chart.type === 'pie' }
+          }
+        }
+      };
+
+      // 折れ線グラフかつ上限・下限が設定されている場合の設定
+      if (chart.type === 'line') {
+        config.options.scales = {
+          y: {}
+        };
+        if (chart.yMin !== undefined && chart.yMin !== '') config.options.scales.y.min = Number(chart.yMin);
+        if (chart.yMax !== undefined && chart.yMax !== '') config.options.scales.y.max = Number(chart.yMax);
+      }
+
+      chartInstances[chart.id] = new Chart(ctx, config);
+    }
+
+    // モーダルを開く（新規 or 編集）
+    function openModal(id = null) {
+      modal.style.display = 'flex';
+      dataRowsContainer.innerHTML = '';
+
+      if (id) {
+        // 編集モード
+        const chart = chartsData.find(c => c.id === id);
+        document.getElementById('modalTitle').textContent = 'グラフの編集';
+        document.getElementById('editChartId').value = chart.id;
+        document.getElementById('chartTitle').value = chart.title;
+        document.getElementById('chartType').value = chart.type;
+        document.getElementById('chartColor').value = chart.color;
+        document.getElementById('yMin').value = chart.yMin || '';
+        document.getElementById('yMax').value = chart.yMax || '';
+        document.getElementById('deleteChartBtn').style.display = 'block';
+
+        document.getElementById('limitFields').style.display = chart.type === 'pie' ? 'none' : 'block';
+
+        chart.data.forEach(d => addDataRow(d.l, d.v));
+      } else {
+        // 新規追加モード
+        document.getElementById('modalTitle').textContent = 'グラフの追加';
+        document.getElementById('editChartId').value = '';
+        document.getElementById('chartTitle').value = '';
+        document.getElementById('chartType').value = 'line';
+        document.getElementById('chartColor').value = '#4a90e2';
+        document.getElementById('yMin').value = '';
+        document.getElementById('yMax').value = '';
+        document.getElementById('deleteChartBtn').style.display = 'none';
+        document.getElementById('limitFields').style.display = 'block';
+
+        // 初期データ行を2つほど出しておく
+        addDataRow('1', '');
+        addDataRow('2', '');
+      }
+    }
+
+    function closeModal() {
+      modal.style.display = 'none';
+    }
+
+    // データ入力用の行を追加する
+    function addDataRow(label = '', value = '') {
+      const row = document.createElement('div');
+      row.className = 'data-row';
+      row.innerHTML = `
+        <input type="text" class="form-control row-label" placeholder="ラベル" value="${label}" style="flex: 2;">
+        <input type="number" class="form-control row-value" placeholder="値" value="${value}" style="flex: 2;">
+        <button type="button" class="btn-remove-data" onclick="this.parentElement.remove()">✕</button>
+      `;
+      dataRowsContainer.appendChild(row);
+    }
+
+    // グラフの保存（新規登録 ＆ 更新処理）
+    function saveChart() {
+      const id = document.getElementById('editChartId').value;
+      const title = document.getElementById('chartTitle').value || '無題のグラフ';
+      const type = document.getElementById('chartType').value;
+      const color = document.getElementById('chartColor').value;
+      const yMin = document.getElementById('yMin').value;
+      const yMax = document.getElementById('yMax').value;
+
+      // 行からデータを収集
+      const rows = dataRowsContainer.querySelectorAll('.data-row');
+      const data = [];
+      rows.forEach(row => {
+        const l = row.querySelector('.row-label').value || '-';
+        const v = Number(row.querySelector('.row-value').value) || 0;
+        data.push({ l, v });
+      });
+
+      if (id) {
+        // 既存データの更新
+        const index = chartsData.findIndex(c => c.id === id);
+        chartsData[index] = { id, title, type, color, yMin, yMax, data };
+      } else {
+        // 新規作成
+        const newId = String(Date.now());
+        chartsData.push({ id: newId, title, type, color, yMin, yMax, data });
+      }
+
+      saveToLocalStorage();
+      renderDashboard();
+      closeModal();
+    }
+
+    // グラフの削除
+    function deleteChart() {
+      const id = document.getElementById('editChartId').value;
+      if (id && confirm('このグラフを削除してもよろしいですか？')) {
+        chartsData = chartsData.filter(c => c.id !== id);
+        saveToLocalStorage();
+        renderDashboard();
+        closeModal();
+      }
+    }
+
+    function saveToLocalStorage() {
+      localStorage.setItem('dashboard_charts', JSON.stringify(chartsData));
+    }
+
+    // 補助関数: カラーコードを透過rgbaにする
+    function rgbaColor(hex, alpha) {
+      const r = parseInt(hex.slice(1, 3), 16);
+      const g = parseInt(hex.slice(3, 5), 16);
+      const b = parseInt(hex.slice(5, 7), 16);
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+
+    // 補助関数: 円グラフ用にテーマカラーを基調としたグラデーション色を生成
+    function generatePieColors(baseHex, count) {
+      const colors = [];
+      for (let i = 0; i < count; i++) {
+        const alpha = 1 - (i * (0.6 / Math.max(count, 1)));
+        colors.push(rgbaColor(baseHex, alpha));
+      }
+      return colors;
+    }
+  </script>
 </body>
 </html>
