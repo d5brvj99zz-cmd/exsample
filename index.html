@@ -40,9 +40,33 @@
       margin-bottom: 20px;
     }
 
-    h1 {
+    /* ★ タイトルをタップできるボタン風に調整 */
+    .app-title-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: none;
+      border: none;
       font-size: 24px;
       font-weight: bold;
+      color: var(--text-color);
+      cursor: pointer;
+      padding: 4px 8px;
+      margin-left: -8px;
+      border-radius: 8px;
+      transition: background-color 0.2s;
+    }
+    .app-title-btn:active {
+      background-color: rgba(0,0,0,0.05);
+    }
+    .app-title-btn .arrow {
+      font-size: 14px;
+      color: #888;
+      transition: transform 0.3s;
+    }
+    /* メニューが開いているときは矢印を上に向ける */
+    .app-title-btn.active .arrow {
+      transform: rotate(180deg);
     }
 
     .json-actions {
@@ -169,34 +193,31 @@
       background: rgba(74, 144, 226, 0.05);
     }
 
-    /* ★ モーダル背景のアニメーション設定 */
+    /* モーダル共通背景（ボトムアップ対応） */
     .modal {
       position: fixed;
       top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0); /* 初期状態は透明 */
+      background: rgba(0,0,0,0);
       z-index: 1000;
       display: flex;
       justify-content: center;
       align-items: flex-end;
-      
-      /* アニメーション用の設定 */
       opacity: 0;
-      pointer-events: none; /* 閉じている時はタップを通さない */
+      pointer-events: none;
       transition: background-color 0.3s ease, opacity 0.3s ease;
     }
     
-    /* モーダル表示時の背景 */
     .modal.show {
       opacity: 1;
       pointer-events: auto;
-      background: rgba(0,0,0,0.5); /* 黒半透明にする */
+      background: rgba(0,0,0,0.5);
     }
 
     @media (min-width: 600px) {
       .modal { align-items: center; }
     }
 
-    /* ★ モーダル中身のボトムアップ・アニメーション設定 */
+    /* モーダル中身共通 */
     .modal-content {
       background: var(--card-bg);
       width: 100%;
@@ -206,21 +227,16 @@
       padding: 20px;
       max-height: 85vh;
       overflow-y: auto;
-      
-      /* 初期状態：画面下部に隠しておく（100%下へずらす） */
       transform: translateY(100%);
-      transition: transform 0.35s cubic-bezier(0.1, 0.76, 0.55, 0.94); /* 少し弾むような今時の加速 */
+      transition: transform 0.35s cubic-bezier(0.1, 0.76, 0.55, 0.94);
     }
     
-    /* モーダル表示時の中身の位置 */
     .modal.show .modal-content {
-      transform: translateY(0); /* 元の位置（下部）に戻る */
+      transform: translateY(0);
     }
 
     @media (min-width: 600px) {
       .modal-content { border-radius: 16px; }
-      /* PC環境では下からではなく、少し下からふわっと中央に出るスタイル */
-      .modal { transform: scale(1); }
       .modal-content { transform: translateY(30px); opacity: 0; transition: transform 0.3s ease, opacity 0.3s ease;}
       .modal.show .modal-content { transform: translateY(0); opacity: 1; }
     }
@@ -233,6 +249,48 @@
     }
     .modal-title { font-weight: bold; font-size: 18px; }
     .modal-close { font-size: 24px; cursor: pointer; background: none; border: none; color: #999; }
+
+    /* ★ アプリ切り替えメニュー用のスタイル */
+    .app-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 8px;
+    }
+    .app-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px;
+      background: #f8fafc;
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      text-decoration: none;
+      color: var(--text-color);
+      font-weight: 500;
+      font-size: 15px;
+      transition: all 0.2s;
+    }
+    .app-item:active {
+      background: #f1f5f9;
+      transform: scale(0.98);
+    }
+    .app-icon {
+      font-size: 20px;
+      width: 36px;
+      height: 36px;
+      background: #fff;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .app-item.current {
+      border-color: var(--primary-color);
+      background: rgba(74, 144, 226, 0.05);
+      color: var(--primary-color);
+    }
 
     .form-group { margin-bottom: 12px; }
     .form-group label {
@@ -290,7 +348,12 @@
 <body>
 
   <div class="header-container">
-    <h1>ダッシュボード</h1>
+    <!-- ★ タイトル部分をボタンに変更 -->
+    <button class="app-title-btn" id="appTitleBtn">
+      <span>ダッシュボード</span>
+      <span class="arrow">▼</span>
+    </button>
+    
     <div class="json-actions">
       <button class="btn-json" id="importBtn" title="JSONデータを読み込む">
         <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v4M7 10l5 5 5-5M12 15V3"/></svg>
@@ -311,7 +374,33 @@
     </button>
   </div>
 
-  <!-- モーダル（入力フォーム） -->
+  <!-- ★ アプリ切り替え用のモーダル -->
+  <div class="modal" id="appSwitchModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title">アプリの切り替え</div>
+        <button class="modal-close" id="closeAppModalBtn">&times;</button>
+      </div>
+      <div class="app-list">
+        <!-- 現在のアプリ -->
+        <a href="#" class="app-item current" onclick="closeAppModal(); return false;">
+          <div class="app-icon">📊</div>
+          <div>ダッシュボード（現在の画面）</div>
+        </a>
+        <!-- elseApp配下の別アプリへの動線 -->
+        <a href="elseApp/App1.html" class="app-item">
+          <div class="app-icon">📝</div>
+          <div>汎用メモアプリ (App1)</div>
+        </a>
+        <a href="elseApp/App2.html" class="app-item">
+          <div class="app-icon">📅</div>
+          <div>スケジュール管理 (App2)</div>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- グラフ編集用のモーダル -->
   <div class="modal" id="chartModal">
     <div class="modal-content">
       <div class="modal-header">
@@ -377,12 +466,15 @@
 
     const grid = document.getElementById('dashboardGrid');
     const modal = document.getElementById('chartModal');
+    const appModal = document.getElementById('appSwitchModal');
+    const appTitleBtn = document.getElementById('appTitleBtn');
     const dataRowsContainer = document.getElementById('dataRowsContainer');
 
     window.addEventListener('DOMContentLoaded', () => {
       renderDashboard();
       initSortable();
       
+      // グラフ用イベント
       document.getElementById('openAddModalBtn').addEventListener('click', () => openModal());
       document.getElementById('closeModalBtn').addEventListener('click', closeModal);
       document.getElementById('add增RowBtn').addEventListener('click', () => addDataRow('', ''));
@@ -397,11 +489,23 @@
       document.getElementById('importBtn').addEventListener('click', () => document.getElementById('jsonFileInput').click());
       document.getElementById('jsonFileInput').addEventListener('change', importFromJson);
       
-      // 背景タップでもモーダルを閉じられるようにする（スマホで使いやすいUI）
-      modal.addEventListener('click', (e) => {
-        if(e.target === modal) closeModal();
-      });
+      modal.addEventListener('click', (e) => { if(e.target === modal) closeModal(); });
+
+      // ★ アプリ切り替え用のイベント追加
+      appTitleBtn.addEventListener('click', openAppModal);
+      document.getElementById('closeAppModalBtn').addEventListener('click', closeAppModal);
+      appModal.addEventListener('click', (e) => { if(e.target === appModal) closeAppModal(); });
     });
+
+    // ★ アプリ切り替えモーダルの制御関数
+    function openAppModal() {
+      appTitleBtn.classList.add('active');
+      appModal.classList.add('show');
+    }
+    function closeAppModal() {
+      appTitleBtn.classList.remove('active');
+      appModal.classList.remove('show');
+    }
 
     function exportToJson() {
       const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(chartsData, null, 2))}`;
@@ -527,7 +631,6 @@
       chartInstances[chart.id] = new Chart(ctx, config);
     }
 
-    // ★修正ポイント：JavaScriptでクラス名「show」を制御
     function openModal(id = null) {
       dataRowsContainer.innerHTML = '';
 
@@ -557,14 +660,10 @@
         addDataRow('2', '');
       }
       
-      // クラスを付与してアニメーションを開始
       modal.classList.add('show');
     }
 
-    function closeModal() { 
-      // クラスを外して下部に下げるアニメーションを開始
-      modal.classList.remove('show'); 
-    }
+    function closeModal() { modal.classList.remove('show'); }
 
     function addDataRow(label = '', value = '') {
       const row = document.createElement('div');
